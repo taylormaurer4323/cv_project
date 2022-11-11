@@ -14,7 +14,14 @@ here is the link:
 You'll also want to make sure you have data which you get from their webiste here:
     https://www.argoverse.org/av1.html#stereo-link
 Keep scrolling down to the bottom!
+
+Additionally you want to make sure you have all the below imports installed, additionally
+you want the following packages installed (you likely have a good amount already 
+installed):
+    logging, pathlib, typing, imageio, typing_extensions, pandas, multiprocessing, argparse,
+    functools, dataclasses, glob, scipy
     '''
+    
 from pathlib import Path
 import json
 
