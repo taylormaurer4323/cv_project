@@ -383,7 +383,7 @@ evaluator = StereoEvaluator(
 )
 print('Running Stereo Evaluator')
 # Running the stereo evaluation.
-#metrics = evaluator.evaluate() this fails because I only look at a single value
+#metrics = evaluator.evaluate() this fails because I only look at a single value, but will come in handy later
 
 # Printing the quantitative results (using json trick for organized printing).
-print(metrics)
+#print(metrics)
