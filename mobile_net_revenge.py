@@ -79,7 +79,7 @@ if __name__ == '__main__':
     '4137e94a-c5da-38bd-ad06-6d57b24bccd0',  'd4d9e91f-0f8e-334d-bd0e-0d062467308a',
     '45753856-4575-4575-4575-345754906624',  'dcdcd8b3-0ba1-3218-b2ea-7bb965aad3f0',
     '52af191b-ba56-326c-b569-e37790db40f3',  'de777454-df62-3d5a-a1ce-2edb5e5d4922',
-    '53037376-5303-5303-5303-553038557184',  'e9bb51af-1112-34c2-be3e-7ebe826649b4',
+    '53037376-5303-5303-5303-553038557184l',  'e9bb51af-1112-34c2-be3e-7ebe826649b4',
     '53213cf0-540b-3b5a-9900-d24d1d41bda0',  'ebe7a98b-d383-343b-96d6-9e681e2c6a36',
     '577ea60d-7cc0-34a4-a8ff-0401e5ab9c62',  'f0826a9f-f46e-3c27-97af-87a77f7899cd',
     '5c251c22-11b2-3278-835c-0cf3cdee3f44',  'f3fb839e-0aa2-342b-81c3-312b80be44f9',
@@ -93,12 +93,13 @@ if __name__ == '__main__':
     split_name = "val"
     val_log_ids = \
     ["00c561b9-2057-358d-82c6-5b06d76cebcf",
-    "033669d3-3d6b-3d3d-bd93-7985d86653ea",
-    "1d676737-4110-3f7e-bec0-0c90f74c248f",
-    "2d12da1d-5238-3870-bfbc-b281d5e8c1a1",
-    "33737504-3373-3373-3373-633738571776",
-    "39556000-3955-3955-3955-039557148672",
-    "5ab2697b-6e3e-3454-a36a-aba2c6f27818",
+     "033669d3-3d6b-3d3d-bd93-7985d86653ea",
+     "1d676737-4110-3f7e-bec0-0c90f74c248f",
+     "2d12da1d-5238-3870-bfbc-b281d5e8c1a1",
+     "33737504-3373-3373-3373-633738571776",
+     "39556000-3955-3955-3955-039557148672"]
+
+    ''' "5ab2697b-6e3e-3454-a36a-aba2c6f27818",
     "64724064-6472-6472-6472-764725145600",
     "6db21fda-80cd-3f85-b4a7-0aadeb14724d",
     "70d2aea5-dbeb-333d-b21e-76a7f2f1ba1c",
@@ -108,7 +109,7 @@ if __name__ == '__main__':
     "da734d26-8229-383f-b685-8086e58d1e05",
     "e9a96218-365b-3ecd-a800-ed2c4c306c78",
     "f1008c18-e76e-3c24-adcc-da9858fac145",
-    "f9fa3960-537f-3151-a1a3-37a9c0d6d7f7"]
+    "f9fa3960-537f-3151-a1a3-37a9c0d6d7f7"]'''
     argoverse_ds_test = ArgoverseDataset(data_dir, False, split_name, log_ids=val_log_ids)
     print(len(argoverse_ds_test), 'total data logs within validation set')
     TestImgLoader = DataLoader(argoverse_ds_test, 1, shuffle=False, num_workers = 4)

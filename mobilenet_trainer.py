@@ -7,7 +7,6 @@ Created on Thu Nov 10 20:25:12 2022
 from mobilestereonet.models import __models__, model_loss
 
 from mobilestereonet.utils import *
-import mobilenet_tester as mntest
 import time
 import torch
 import gc
@@ -48,22 +47,22 @@ def train(model, optimizer, TrainImgLoader, logger, logdir, start_epoch = 0, epo
                 global_step = len(TestImgLoader) * epoch_idx + batch_idx
                 start_time = time.time()
                 do_summary = global_step % 10 == 0
-                loss, scalar_outputs, image_outputs = mntest.test_sample(model, sample, compute_metrics=do_summary)
+                loss, scalar_outputs, image_outputs = test_sample(model, sample, max_disp, compute_metrics=do_summary)
                 if do_summary:
                     save_scalars(logger, 'test', scalar_outputs, global_step)
                     save_images(logger, 'test', image_outputs, global_step)
                 avg_test_scalars.update(scalar_outputs)
                 del scalar_outputs, image_outputs
-                print('Epoch {}/{}, Iter {}/{}, test loss = {:.3f}, time = {:3f}'.format(epoch_idx, args.epochs,
+                print('Epoch {}/{}, Iter {}/{}, test loss = {:.3f}, time = {:3f}'.format(epoch_idx, epochs,
                                                                                          batch_idx,
                                                                                          len(TestImgLoader), loss,
                                                                                          time.time() - start_time))
-                avg_test_scalars = avg_test_scalars.mean()
-                if avg_test_scalars['loss'] < best_checkpoint_loss:
-                    best_checkpoint_loss = avg_test_scalars['loss']
-                    print("Overwriting best checkpoint")
-                    checkpoint_data = {'epoch': epoch_idx, 'model': model.state_dict(), 'optimizer': optimizer.state_dict()}
-                    torch.save(checkpoint_data, "{}/best.ckpt".format(args.logdir))
+            avg_test_scalars = avg_test_scalars.mean()
+            if avg_test_scalars['loss'] < best_checkpoint_loss:
+                best_checkpoint_loss = avg_test_scalars['loss']
+                print("Overwriting best checkpoint")
+                checkpoint_data = {'epoch': epoch_idx, 'model': model.state_dict(), 'optimizer': optimizer.state_dict()}
+                torch.save(checkpoint_data, "{}/best.ckpt".format(logdir))
 
 
 # train one sample
@@ -94,7 +93,32 @@ def train_sample(model, optimizer, sample, max_disp = 192, compute_metrics=False
     optimizer.step()
 
     return tensor2float(loss), tensor2float(scalar_outputs), image_outputs
+@make_nograd_func
+def test_sample(model, sample, maxdisp, compute_metrics=True):
+    model.eval()
 
+    imgL, imgR, disp_gt = sample['left'], sample['right'], sample['disparity']
+    imgL = imgL.cuda()
+    imgR = imgR.cuda()
+    disp_gt = disp_gt.cuda()
+
+    disp_ests = model(imgL, imgR)
+    mask = (disp_gt < maxdisp) & (disp_gt > 0)
+    loss = model_loss(disp_ests, disp_gt, mask)
+
+    scalar_outputs = {"loss": loss}
+    image_outputs = {"disp_est": disp_ests, "disp_gt": disp_gt, "imgL": imgL, "imgR": imgR}
+
+    scalar_outputs["D1"] = [D1_metric(disp_est, disp_gt, mask) for disp_est in disp_ests]
+    scalar_outputs["EPE"] = [EPE_metric(disp_est, disp_gt, mask) for disp_est in disp_ests]
+    scalar_outputs["Thres1"] = [Thres_metric(disp_est, disp_gt, mask, 1.0) for disp_est in disp_ests]
+    scalar_outputs["Thres2"] = [Thres_metric(disp_est, disp_gt, mask, 2.0) for disp_est in disp_ests]
+    scalar_outputs["Thres3"] = [Thres_metric(disp_est, disp_gt, mask, 3.0) for disp_est in disp_ests]
+
+    if compute_metrics:
+        image_outputs["errormap"] = [disp_error_image_func(disp_est, disp_gt) for disp_est in disp_ests]
+
+    return tensor2float(loss), tensor2float(scalar_outputs), image_outputs
 if __name__ == '__main__':
     train()
     

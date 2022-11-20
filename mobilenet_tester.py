@@ -104,7 +104,7 @@ def test_sample(model, sample):
     else:
         if torch.cuda.is_available():
             left_img = sample['left'].cuda()
-            right_img = sample['right'.cuda()]
+            right_img = sample['right'].cuda()
         else:
             left_img = sample['left']
             right_img = sample['right']
