@@ -7,12 +7,16 @@ Created on Thu Nov 10 20:43:38 2022
 from mobilestereonet.models import __models__, model_loss
 from mobilestereonet.utils import *
 import time
+import os
 import torch
 import gc
 from utils.KittiColormap import *
+import numpy as np
+import matplotlib.pyplot as plt
+import cv2
+from sys import platform
+from mobilestereonet.utils import *
 
-
-#DEFINE TEST SAMPLE
 def test(model, img_loader, test_iteration_limit = 100000):
     time_start = time.time()
     print("Generating the disparity maps...")
@@ -30,9 +34,7 @@ def test(model, img_loader, test_iteration_limit = 100000):
     os.makedirs(ref_img_path, exist_ok=True)
     agg_time = 0
     for batch_idx, sample in enumerate(img_loader):
-        
-        if batch_idx % 5 == 0:
-            clear_output(wait=True)
+
         print('Batch ', batch_idx, 'out of ', len(img_loader))
         
         disp_est_tn, inf_time = test_sample(model, sample)
@@ -60,7 +62,12 @@ def test(model, img_loader, test_iteration_limit = 100000):
             disp_truth_obj = np.uint16(disp_truth*256)
 
             truth_img = np.uint8(left_img.transpose((1,2,0))*255)
-            name = fn.split('/')
+
+            if platform == "linux" or platform == "linux2":
+                name = fn.split('/')
+            elif platform == "win32" or platform == "win64":
+                name = fn.split('\\')
+
             name = name[-1].split('.')
             pred_name = 'pred'+name[0]+'.png'
             truth_name = 'truth'+name[0]+'.png'
@@ -72,7 +79,7 @@ def test(model, img_loader, test_iteration_limit = 100000):
             truth_obj_fn = os.path.join(truth_obj_path, truth_obj_name)
             img_fn = os.path.join(ref_img_path, img_name)
             
-            disp_est = kitti_colormap(disp_est)            
+            #disp_est = kitti_colormap(disp_est)
             cv2.imwrite(pred_fn, disp_est)
             cv2.imwrite(truth_fn, disp_truth)
             cv2.imwrite(truth_obj_fn, disp_truth_obj)
@@ -112,3 +119,39 @@ def test_sample(model, sample):
     disp_ests = model(left_img, right_img)
     inf_time = time.time() - istart
     return disp_ests[-1], inf_time
+
+
+@make_nograd_func
+def test_single_instance(model, index, dataset, default_size=(512, 960), bFlip_to_depth=False, focal_length=0, baseline=.2986):
+    # Grab thing:
+    sample = dataset.__getitem__(index)
+    disp_est, inference_time = test_sample(model, sample)
+    disp_est_np = np.reshape(tensor2numpy(disp_est), default_size)
+    disp_est_np = np.float32(disp_est_np)
+    disp_est_np[disp_est_np < 0] = 0
+
+    if bFlip_to_depth:
+        valid_pixels = disp_est_np > 0
+        disp_est_np = np.float32((focal_length * baseline) / (disp_est_np + (1.0 - valid_pixels)))
+
+    # Dilate map:
+    #map_dil = cv2.dilate(disp_est_np, kernel=np.ones((2, 2), np.uint8), iterations=7)
+    li = sample["left_truth_img"].permute(1, 2, 0).numpy()
+    map_true = sample["disparity"]
+    #map_dil_true = cv2.dilate(map_true, kernel=np.ones((2, 2), np.uint8), iterations=7)
+
+    plt.figure(figsize=(24, 18), dpi=150)
+    plt.subplot(1, 3, 1)
+    plt.imshow(li)
+    plt.subplot(1, 3, 2)
+    plt.imshow(disp_est_np)
+    plt.colorbar(fraction=0.046, pad=0.04)
+    plt.subplot(1, 3, 3)
+    plt.imshow(map_true)
+    plt.colorbar(fraction=0.046, pad=0.04)
+    plt.show()
+
+    return disp_est_np, map_true
+
+if __name__ == '__main__':
+    test()

@@ -10,6 +10,7 @@ from mobilestereonet.utils import *
 import time
 import torch
 import gc
+import matplotlib.pyplot as plt
 
 def train(model, optimizer, TrainImgLoader, logger, logdir, start_epoch = 0, epochs = 1, lrepochs= "200:10", summary_freq = 10, 
     learning_rate = .001, train_limit = 100000, max_disp = 192, save_freq = 1, TestImgLoader=0):
@@ -70,10 +71,11 @@ def train_sample(model, optimizer, sample, max_disp = 192, compute_metrics=False
     model.train()
 
     imgL, imgR, disp_gt = sample['left'], sample['right'], sample['disparity']
+
     imgL = imgL.cuda()
     imgR = imgR.cuda()
     disp_gt = disp_gt.cuda()
-    
+
     optimizer.zero_grad()
     disp_ests = model(imgL, imgR)
     mask = (disp_gt < max_disp) & (disp_gt > 0)

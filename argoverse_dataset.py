@@ -10,6 +10,9 @@ from argoverse_light.stereo_dataloader import ArgoverseStereoDataLoader
 from math import floor
 import torchvision.transforms as transforms
 import random
+import cv2
+import numpy as np
+import matplotlib.pyplot as plt
 
 #BUild dataset class for the translation between mobilenet and argoverse data
 STEREO_FRONT_LEFT_RECT = RECTIFIED_STEREO_CAMERA_LIST[0]
@@ -141,17 +144,27 @@ class ArgoverseDataset(Dataset):
             #some number b/t 0 and all the way to edge (top or right)
             x1 = random.randint(0, w-crop_w)
             y1 = random.randint(0, h - crop_h)
+            T_disp = transforms.ToTensor()
 
             T = transforms.Compose([
                 transforms.ToTensor(),
                 transforms.Normalize(mean=mean, std=std)])
-            
+            left_img = cv2.resize(left_img, (crop_w, crop_h))
             left_img_t = T(left_img)
-            left_img_t = transforms.functional.crop(left_img_t, y1, x1, crop_h, crop_w)
+            #left_img_t = transforms.functional.crop(left_img_t, y1, x1, crop_h, crop_w)
+            right_img = cv2.resize(right_img, (crop_w, crop_h))
             right_img_t = T(right_img)
-            right_img_t = transforms.functional.crop(right_img_t, y1, x1, crop_h, crop_w)
+            #right_img_t = transforms.functional.crop(right_img_t, y1, x1, crop_h, crop_w)
             #print('y1: ', y1, 'y1+crop_h', y1+crop_h, 'x1: ', x1, 'x1+crop_w', x1+crop_w)
-            stereo_front_left_rect_disparity = stereo_front_left_rect_disparity[y1:y1+crop_h, x1:x1+crop_w]
+            #map_dil = cv2.dilate(img_disp.permute(1, 2, 0).numpy(), kernel=np.ones((20, 20), np.uint8), iterations=7)
+            #stereo_front_left_rect_disparity = cv2.dilate(stereo_front_left_rect_disparity, kernel=np.ones((8, 8), np.uint8), iterations=7)
+            #stereo_front_left_rect_disparity = cv2.resize(stereo_front_left_rect_disparity, (crop_w, crop_h))
+            stereo_front_left_rect_objects_disparity = cv2.dilate(stereo_front_left_rect_objects_disparity,kernel=np.ones((8, 8), np.uint8), iterations=7)
+            stereo_front_left_rect_disparity = cv2.resize(stereo_front_left_rect_objects_disparity, (crop_w, crop_h))
+            #stereo_front_left_rect_disparity = T_disp(stereo_front_left_rect_disparity)
+
+            #stereo_front_left_rect_disparity = transforms.functional.crop(stereo_front_left_rect_disparity, y1, x1, crop_h, crop_w)
+            #stereo_front_left_rect_disparity = stereo_front_left_rect_disparity[y1:y1+crop_h, x1:x1+crop_w]
             
             return {"left": left_img_t,
                 "right": right_img_t,
@@ -159,6 +172,7 @@ class ArgoverseDataset(Dataset):
         else:
             #Need to crop...
             crop_w, crop_h = 960, 512
+            #crop_w, crop_h = 512, 256
             h, w , c = left_img.shape
 
             x_start = floor((w - crop_w)/2)
@@ -168,14 +182,22 @@ class ArgoverseDataset(Dataset):
                 transforms.ToTensor(),
                 transforms.Normalize(mean=mean, std=std)])
 
+
             #center crop:
+            left_img = cv2.resize(left_img, (crop_w, crop_h))
             left_img_t = T(left_img)
-            #print('y_start: ', y_start, 'x_start: ', x_start, 'crop_h: ', crop_h, 'crop_w:', crop_w)
-            left_img_t = transforms.functional.crop(left_img_t, y_start, x_start, crop_h, crop_w)
+            #left_img_t = transforms.functional.crop(left_img_t, y_start, x_start, crop_h, crop_w)
+            right_img = cv2.resize(right_img, (crop_w, crop_h))
             right_img_t = T(right_img)
-            right_img_t = transforms.functional.crop(right_img_t, y_start, x_start, crop_h, crop_w)
-            stereo_front_left_rect_disparity = stereo_front_left_rect_disparity[y_start:y_start+crop_h, x_start:x_start+crop_w]
-            stereo_front_left_rect_objects_disparity = stereo_front_left_rect_objects_disparity[y_start:y_start+crop_h, x_start:x_start+crop_w]
+            #right_img_t = transforms.functional.crop(right_img_t, y_start, x_start, crop_h, crop_w)
+            #stereo_front_left_rect_disparity = stereo_front_left_rect_disparity[y_start:y_start+crop_h, x_start:x_start+crop_w]
+            stereo_front_left_rect_disparity = cv2.dilate(stereo_front_left_rect_disparity, kernel=np.ones((8, 8), np.uint8), iterations=7)
+            stereo_front_left_rect_disparity = cv2.resize(stereo_front_left_rect_disparity, (crop_w, crop_h))
+
+            #stereo_front_left_rect_objects_disparity = stereo_front_left_rect_objects_disparity[y_start:y_start+crop_h, x_start:x_start+crop_w]
+            stereo_front_left_rect_objects_disparity = cv2.dilate(stereo_front_left_rect_objects_disparity, kernel=np.ones((8, 8), np.uint8), iterations=7)
+            stereo_front_left_rect_objects_disparity = cv2.resize(stereo_front_left_rect_objects_disparity, (crop_w, crop_h))
+
             tmp_T = transforms.ToTensor()
             left_truth_image = tmp_T(self.get_left_image(index, cropped=True))
             right_truth_image = tmp_T(self.get_right_image(index, cropped=True))
