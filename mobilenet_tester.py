@@ -15,6 +15,8 @@ import numpy as np
 import matplotlib.pyplot as plt
 import cv2
 from sys import platform
+import torchvision
+import torchvision.transforms as transforms
 from mobilestereonet.utils import *
 
 def test(model, img_loader, test_iteration_limit = 100000):
@@ -120,12 +122,46 @@ def test_sample(model, sample):
     inf_time = time.time() - istart
     return disp_ests[-1], inf_time
 
+@make_nograd_func
+def test_sample_mb(model, sample):
+
+    model.eval()
+    h,w =sample[0].size
+    c=3
+
+    if torch.cuda.is_available():
+        left_img = sample[0].resize((1456, 960))
+
+        left_img = torchvision.transforms.functional.pil_to_tensor(left_img)
+        left_img = torch.reshape(left_img, (1, c, 960, 1456))
+        left_img = left_img.float()
+        left_img.cuda()
+        right_img = sample[0].resize((1456, 960))
+        right_img = torchvision.transforms.functional.pil_to_tensor(right_img)
+        right_img = right_img.float()
+        right_img = torch.reshape(right_img, (1, c, 960, 1456))
+        right_img.cuda()
+    else:
+        left_img = torchvision.transforms.functional.pil_to_tensor(sample[0])
+        left_img = torch.reshape(left_img, (1, c, h, w))
+        right_img = torchvision.transforms.functional.pil_to_tensor(sample[1])
+        right_img = torch.reshape(right_img, (1, c, h, w))
+
+    istart = time.time()
+    disp_ests = model(left_img, right_img)
+    inf_time = time.time() - istart
+    return disp_ests[-1], inf_time
+
 
 @make_nograd_func
-def test_single_instance(model, index, dataset, default_size=(512, 960), bFlip_to_depth=False, focal_length=0, baseline=.2986):
+def test_single_instance(model, index, dataset, default_size=(512, 960), bFlip_to_depth=False, focal_length=0, baseline=.2986, bMiddlebury=False):
     # Grab thing:
     sample = dataset.__getitem__(index)
-    disp_est, inference_time = test_sample(model, sample)
+    if bMiddlebury:
+        disp_est, inference_time = test_sample_mb(model, sample)
+    else:
+        disp_est, inference_time = test_sample(model, sample)
+    print(sample['left_filename'])
     disp_est_np = np.reshape(tensor2numpy(disp_est), default_size)
     disp_est_np = np.float32(disp_est_np)
     disp_est_np[disp_est_np < 0] = 0
@@ -137,21 +173,60 @@ def test_single_instance(model, index, dataset, default_size=(512, 960), bFlip_t
     # Dilate map:
     #map_dil = cv2.dilate(disp_est_np, kernel=np.ones((2, 2), np.uint8), iterations=7)
     li = sample["left_truth_img"].permute(1, 2, 0).numpy()
+    ri = sample["right_truth_img"].permute(1, 2, 0).numpy()
     map_true = sample["disparity"]
     #map_dil_true = cv2.dilate(map_true, kernel=np.ones((2, 2), np.uint8), iterations=7)
 
     plt.figure(figsize=(24, 18), dpi=150)
-    plt.subplot(1, 3, 1)
+    plt.subplot(2, 2, 1)
     plt.imshow(li)
-    plt.subplot(1, 3, 2)
+    plt.subplot(2, 2, 2)
+    plt.imshow(ri)
+    plt.subplot(2,2,3)
     plt.imshow(disp_est_np)
     plt.colorbar(fraction=0.046, pad=0.04)
-    plt.subplot(1, 3, 3)
+    plt.subplot(2, 2, 4)
     plt.imshow(map_true)
     plt.colorbar(fraction=0.046, pad=0.04)
     plt.show()
 
     return disp_est_np, map_true
+@make_nograd_func
+def test_single_instance_mb(model, index, dataset, default_size=(1456, 960), bFlip_to_depth=False, focal_length=0, baseline=.2986):
+    # Grab thing:
+    sample = dataset.__getitem__(index)
 
+    disp_est, inference_time = test_sample_mb(model, sample)
+
+    disp_est_np = np.reshape(tensor2numpy(disp_est), (960, 1456))
+    disp_est_np = np.float32(disp_est_np)
+    disp_est_np[disp_est_np < 0] = 0
+
+    if bFlip_to_depth:
+        valid_pixels = disp_est_np > 0
+        disp_est_np = np.float32((focal_length * baseline) / (disp_est_np + (1.0 - valid_pixels)))
+
+    # Dilate map:
+    #map_dil = cv2.dilate(disp_est_np, kernel=np.ones((2, 2), np.uint8), iterations=7)
+    li = sample[0]
+    ri = sample[1]
+    map_true = sample[3]
+    map_true = cv2.resize(map_true.astype(float), (1456, 960))
+    #map_dil_true = cv2.dilate(map_true, kernel=np.ones((2, 2), np.uint8), iterations=7)
+
+    plt.figure(figsize=(24, 18), dpi=150)
+    plt.subplot(2, 2, 1)
+    plt.imshow(li)
+    plt.subplot(2, 2, 2)
+    plt.imshow(ri)
+    plt.subplot(2,2,3)
+    plt.imshow(disp_est_np)
+    plt.colorbar(fraction=0.046, pad=0.04)
+    plt.subplot(2, 2, 4)
+    plt.imshow(map_true)
+    plt.colorbar(fraction=0.046, pad=0.04)
+    plt.show()
+
+    return disp_est_np, map_true
 if __name__ == '__main__':
     test()

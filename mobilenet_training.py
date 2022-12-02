@@ -29,6 +29,7 @@ import torch.backends.cudnn as cudnn
 ## Datasetup #####################################################################
 #################################################################################
 if __name__ == '__main__':
+    torch.cuda.empty_cache()
     #Some parallel friendly imports
     fpath = os.path.abspath(os.path.join(os.getcwd()))
     fpath_mobilenet = os.path.join(fpath, 'mobilestereonet')
@@ -85,21 +86,24 @@ if __name__ == '__main__':
     '5c251c22-11b2-3278-835c-0cf3cdee3f44',  'f3fb839e-0aa2-342b-81c3-312b80be44f9',
     '649750f3-0163-34eb-a102-7aaf5384eaec',  'fa0b626f-03df-35a0-8447-021088814b8b',
     '64c12551-adb9-36e3-a0c1-e43a0e9f3845']
+
     #dataset used by tensor flow
     argoverse_ds = ArgoverseDataset(data_dir, True, split_name, log_ids=log_ids)
-    TrainImgLoader = DataLoader(argoverse_ds, 1, shuffle=False, num_workers = 4)
+    batch_size = 2
+    TrainImgLoader = DataLoader(argoverse_ds, batch_size, shuffle=False, num_workers = 4)
 
 
     split_name = "val"
+
     val_log_ids = \
     ["00c561b9-2057-358d-82c6-5b06d76cebcf",
-     "033669d3-3d6b-3d3d-bd93-7985d86653ea",
-     "1d676737-4110-3f7e-bec0-0c90f74c248f",
-     "2d12da1d-5238-3870-bfbc-b281d5e8c1a1",
-     "33737504-3373-3373-3373-633738571776",
-     "39556000-3955-3955-3955-039557148672"]
+     "033669d3-3d6b-3d3d-bd93-7985d86653ea"]
 
-    ''' "5ab2697b-6e3e-3454-a36a-aba2c6f27818",
+    ''' "1d676737-4110-3f7e-bec0-0c90f74c248f",
+    "2d12da1d-5238-3870-bfbc-b281d5e8c1a1",
+    "33737504-3373-3373-3373-633738571776",
+    "39556000-3955-3955-3955-039557148672"]
+    "5ab2697b-6e3e-3454-a36a-aba2c6f27818",
     "64724064-6472-6472-6472-764725145600",
     "6db21fda-80cd-3f85-b4a7-0aadeb14724d",
     "70d2aea5-dbeb-333d-b21e-76a7f2f1ba1c",
@@ -110,6 +114,7 @@ if __name__ == '__main__':
     "e9a96218-365b-3ecd-a800-ed2c4c306c78",
     "f1008c18-e76e-3c24-adcc-da9858fac145",
     "f9fa3960-537f-3151-a1a3-37a9c0d6d7f7"]'''
+
     argoverse_ds_test = ArgoverseDataset(data_dir, False, split_name, log_ids=val_log_ids)
     print(len(argoverse_ds_test), 'total data logs within validation set')
     TestImgLoader = DataLoader(argoverse_ds_test, 1, shuffle=False, num_workers = 4)
@@ -122,7 +127,7 @@ if __name__ == '__main__':
     model = __models__['MSNet2D'](max_disp)
     model = nn.DataParallel(model)
     model.cuda()
-    prev_checkpoint = 'archive_checkpoints/checkpoint_000097_downsampled_dilated.ckpt'
+    prev_checkpoint = 'best.ckpt'
     state_dict = torch.load(prev_checkpoint)
     model.load_state_dict(state_dict['model'])
 
@@ -132,8 +137,8 @@ if __name__ == '__main__':
 
     start_epoch = 0
     training_epochs = 300
-    lrepochs = "4:10"
-    summary_freq = 10
+    lrepochs = "200:10"
+    summary_freq = 50
     save_freq = 1
 
     mnt.train(model, optimizer, TrainImgLoader, logger, logdir, start_epoch = start_epoch,
